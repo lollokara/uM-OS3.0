@@ -17,6 +17,8 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 
+#define TESTING 		1
+
 #define BoxSizex		64
 #define BoxSizey		11
 #define MAXPOS			4
@@ -40,6 +42,9 @@ void displayBar(float Value,int Range);
 char *GetIP();
 bool readConf(int Index);
 void WifiSett();
+void SetWiFi(int load);
+void GenSett();
+
 const char *Config_dir="/home/root/uM_Conf.cfg";
 
 edOLED oled;
@@ -68,6 +73,7 @@ void setupOLED()
 	oled.print("uM-OS");
 	oled.setFontType(0);
 	for(int i=0;i<101;i=i+5){
+		if (i==10 || i==55 || i==65) SetWiFi(i);
 		oled.setCursor(24,36);
 		oled.print(i);
 		oled.setCursor(42,36);
@@ -218,6 +224,8 @@ void DrawPage(int Page, int CursorPos){
 }
 
 void Selected(int Page,int CursorPos){
+	bool AP=readConf(0);
+	bool WiFi=readConf(1);
 	switch (Page) {
 	case 0:
 		switch (CursorPos) {
@@ -242,10 +250,44 @@ void Selected(int Page,int CursorPos){
 
 		}
 		break;
+	case 3:
+		switch (CursorPos) {
+		case 1:
+			cleanUp();
+			oled.setCursor(12,15);
+			oled.print("Bye Bye");
+			oled.setCursor(26,30);
+			oled.print(";(");
+			oled.display();
+			if(!TESTING) WriteConf(0,0); //Disable For Testing
+			system("shutdown -P now");
+			break;
+		case 2:
+			cleanUp();
+			WifiSett();
+			break;
+		case 3:
+			Info();
+
+		break;
+
+		}
+		break;
 	case 4:
 		switch (CursorPos) {
 		case 0:
+			if(WiFi) WriteConf(0,0);
+			else WriteConf(0,1);
+			SetWiFi(999);
 			cleanUp();
+			WifiSett();
+			break;
+		case 1:
+			if(AP) WriteConf(0,1);
+			else WriteConf(1,1);
+			SetWiFi(999);
+			cleanUp();
+			WifiSett();
 			break;
 		case 2:
 			cleanUp();
@@ -346,9 +388,34 @@ char *GetIP(){
  	strncpy(ifr.ifr_name , iface , IFNAMSIZ-1);
 	ioctl(fd, SIOCGIFADDR, &ifr);
 	close(fd);
-	char *Cropped= (inet_ntoa(( (struct sockaddr_in *)&ifr.ifr_addr )->sin_addr) );
+	char *Cropped= (inet_ntoa(((struct sockaddr_in *)&ifr.ifr_addr )->sin_addr));
 	Cropped+=4;
 	return (Cropped);
+}
+
+
+void SetWiFi(int load){
+	bool AP=readConf(0);
+	bool WiFi=readConf(1);
+	if (load==999){
+		oled.setCursor(40,7+BoxSizey*2);
+		oled.print("Wait");
+		oled.display();
+	}
+	if(AP){
+		if(!TESTING) if(load==10) system("service stop wpa_supplicant ");
+		if(!TESTING) if(load==55) system("service start hostapd ");
+	}
+	else if (WiFi && !AP){
+		if(!TESTING) if(load==10) system("wpa_cli reconfigure ");
+		if(!TESTING) if(load==55) system("service stop hostapd");
+		if(!TESTING) if(load==65) system("service start wpa_supplicant ");
+	}
+	else {
+
+		if(!TESTING) if(load==10) system("service stop wpa_supplicant");
+		if(!TESTING) if(load==65) system("service stop hostapd ");
+	}
 }
 
 bool readConf(int Index){
@@ -365,6 +432,7 @@ bool readConf(int Index){
 	else config_setting_lookup_int(AP, "wifi", &Active);
 	return(Active);
 }
+
 void WriteConf(int Value1, int Value2){
 	config_t cfg;
 	config_setting_t *setting,*root;
@@ -410,3 +478,31 @@ void WifiSett(){
 	}
 }
 
+//shutdown -P now
+
+void GenSett(){
+	int CursorPos=0;
+	int Page=3;
+	while(0==0){
+		DrawMenu(CursorPos, NELEMGEN);
+		drawBatt(false);
+		DrawPage(Page,CursorPos);
+		oled.display();
+		while ((BUTTON_UP.pinRead() == HIGH) && (BUTTON_DOWN.pinRead() == HIGH) && (BUTTON_SELECT.pinRead() == HIGH)) usleep(100000);
+		if (BUTTON_UP.pinRead() == LOW){
+			if(CursorPos==0){
+				CursorPos=NELEMGEN-1;
+			}
+			else CursorPos--;
+		}
+		if (BUTTON_DOWN.pinRead() == LOW){
+					if(CursorPos==NELEMGEN-1){
+						CursorPos=0;
+					}
+					else CursorPos++;
+				}
+		if (BUTTON_SELECT.pinRead() == LOW){
+			Selected(Page,CursorPos);
+		}
+	}
+}
