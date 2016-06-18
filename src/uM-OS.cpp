@@ -1,4 +1,37 @@
+/*
+ * Author: Lorenzo Karavania <lorenzo@karavania.com>
+ * Copyright (c) 2016.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining
+ * a copy of this software and associated documentation files (the
+ * "Software"), to deal in the Software without restriction, including
+ * without limitation the rights to use, copy, modify, merge, publish,
+ * distribute, sublicense, and/or sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject to
+ * the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+ * LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+ * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+ * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
 
+/**
+ * @file
+ * @ingroup basic
+ * @uM-OS the basic OS for uM-OS Project.
+ * @ V 0.1 22/05/2016
+ * @ V 0.2 27/05/2016
+ * @ V 0.3 04/06/2016
+ * @ V 0.4 10/06/2016
+ * @ V 0.5 18/06/2016
+ */
 
 #include <iostream>
 #include "oled/Edison_OLED.h"
@@ -16,45 +49,47 @@
 #include <net/if.h>
 #include <unistd.h>
 #include <arpa/inet.h>
-
-#define TESTING 		1
-
-#define BoxSizex		64
-#define BoxSizey		11
-#define MAXPOS			4
-#define MAXPAGE			1
-#define NELEMWIFI		3
-#define NELEMGEN		2
-
-using namespace std;
-
-void setupOLED();
-void cleanUp();
-void drawBatt(bool BoxSelected);
-void Menu();
-void DrawMenu(int CursorPos,int Elements);
-void DrawPage(int Page, int CursorPos);
-void Selected(int Page,int CursorPos);
-void Info();
-void Voltmeter();
-float ReadADC(float PreviousValue);
-void displayBar(float Value,int Range);
-char *GetIP();
-bool readConf(int Index);
-void WifiSett();
-void SetWiFi(int load);
-void GenSett();
-
-const char *Config_dir="/home/root/uM_Conf.cfg";
-
-edOLED oled;
-gpio BUTTON_UP(47, INPUT);
-gpio BUTTON_DOWN(44, INPUT);
-gpio BUTTON_LEFT(165, INPUT);
-gpio BUTTON_RIGHT(45, INPUT);
-gpio BUTTON_SELECT(48, INPUT);
-gpio BUTTON_A(49, INPUT);
-gpio BUTTON_B(46, INPUT);
+//////////////////////////////////////////////////////////////////////////////////////
+#define TESTING 		false											//TESTING!!!!/ if (not 1)=0 = 0 if (not 0)1 = 1
+//////////////////////////////////////////////////////////////////////////////////////
+#define BoxSizex		64												//Menu Size///
+#define BoxSizey		11												//Menu Size///
+#define MAXPOS			4												//Menu Items//
+#define MAXPAGE			1												//Menu Pages//
+#define NELEMWIFI		3												//Wifi Eleme//
+#define NELEMGEN		2												//Gen  Eleme//
+//////////////////////////////////////////////////////////////////////////////////////
+using namespace std;													//
+																		//
+void setupOLED();														// Init Oled & WIFI
+void cleanUp();															// Clean Oled
+void drawBatt(bool BoxSelected);										// Draw Battery Status
+void Menu();															// Main Menu
+void DrawMenu(int CursorPos,int Elements);								// Draw Boxes
+void DrawPage(int Page, int CursorPos);									// Draw Text (for main and other menus)
+void Selected(int Page,int CursorPos);									// Call the function related to the selected page and cursor (NO CODE HERE)
+void Info();															// Display Version
+void Voltmeter();														// Main purpose
+float ReadADC(float PreviousValue);										// Read ADC (demo)
+void displayBar(float Value,int Range);									// Display the bar of the current value
+char *GetIP();															// ALPHA!!!! Displays IP Addr ( could potentially overwrite code memory, no preallocation done )
+bool readConf(int Index);												// Configuration Parser
+void WriteConf(int Value1, int Value2);									// Write And Saves The Conf ### Maybe a better approach could be taken for avoiding corruption
+void WifiSett();														// Same as Menu (related at the WIFI)
+void SetWiFi(int load);													// Call a shell for setting the WIFI
+void GenSett();															// Same as Menu (related at the General Settings)
+//////////////////////////////////////////////////////////////////////////
+const char *Config_dir="/home/root/uM_Conf.cfg";						// CONFIG FILE DO NOT FUCKING TOUCH IT, CAZZO!
+//////////////////////////////////////////////////////////////////////////
+edOLED oled;															//
+gpio BUTTON_UP(47, INPUT);												//
+gpio BUTTON_DOWN(44, INPUT);											//
+gpio BUTTON_LEFT(165, INPUT);											//
+gpio BUTTON_RIGHT(45, INPUT);											//
+gpio BUTTON_SELECT(48, INPUT);											//
+gpio BUTTON_A(49, INPUT);												//
+gpio BUTTON_B(46, INPUT);												//
+//////////////////////////////////////////////////////////////////////////
 
 int main(int argc, char * argv[])
 {
@@ -99,7 +134,7 @@ void drawBatt(bool BoxSelected)
 	while (*p) { // While there are more characters to process...
 	    if (isdigit(*p)) { // Upon finding a digit, ...
 	        val = strtol(p, &p, 10); // Read a number, ...
-	        printf("%d\n", val); // and print it.
+	        if(TESTING) printf("%d\n", val); // and print it.
 	        break;
 	    } else { // Otherwise, move on to the next character.
 	        p++;
@@ -216,7 +251,7 @@ void DrawPage(int Page, int CursorPos){
 		if(CursorPos==i) oled.setColor(BLACK);
 		else oled.setColor(WHITE);
 		oled.setCursor(1,7+BoxSizey*i);
-		printf("%d  %d",Page,i);
+		if(TESTING) printf("Page=%d  i=%d \n",Page,i);
 		oled.print(Voices[Page][i]);
 		oled.setColor(WHITE);
 	}
@@ -224,8 +259,12 @@ void DrawPage(int Page, int CursorPos){
 }
 
 void Selected(int Page,int CursorPos){
-	bool AP=readConf(0);
-	bool WiFi=readConf(1);
+	bool AP=0;
+	bool WiFi=0;
+	if(Page==4){
+		AP=readConf(0);
+		WiFi=readConf(1);
+	}
 	switch (Page) {
 	case 0:
 		switch (CursorPos) {
@@ -238,6 +277,10 @@ void Selected(int Page,int CursorPos){
 		switch (CursorPos) {
 		case 0:
 			cleanUp();
+			break;
+		case 1:
+			cleanUp();
+			GenSett();
 			break;
 		case 2:
 			cleanUp();
@@ -252,7 +295,7 @@ void Selected(int Page,int CursorPos){
 		break;
 	case 3:
 		switch (CursorPos) {
-		case 1:
+		case 0:
 			cleanUp();
 			oled.setCursor(12,15);
 			oled.print("Bye Bye");
@@ -260,16 +303,11 @@ void Selected(int Page,int CursorPos){
 			oled.print(";(");
 			oled.display();
 			if(!TESTING) WriteConf(0,0); //Disable For Testing
-			system("shutdown -P now");
+			if(!TESTING) system("shutdown -P now");
 			break;
-		case 2:
-			cleanUp();
-			WifiSett();
+		case 1:
+			Menu();
 			break;
-		case 3:
-			Info();
-
-		break;
 
 		}
 		break;
@@ -291,12 +329,8 @@ void Selected(int Page,int CursorPos){
 			break;
 		case 2:
 			cleanUp();
-			break;
-		case 3:
 			Menu();
-
-		break;
-
+			break;
 		}
 		break;
 	}
@@ -309,7 +343,7 @@ void Info(){
 	oled.print("uM-OS");
 	oled.setFontType(0);
 	oled.setCursor(12,25);
-	oled.print("V 0.2A");
+	oled.print("V 0.5B");
 	oled.setCursor(52,40);
 		oled.print("LK");
 	oled.display();
@@ -373,7 +407,7 @@ void displayBar(float Value,int Range){
 float ReadADC(float PreviousValue){
 	float Val=0;
 	if(PreviousValue==0) Val=(random()/(RAND_MAX/20.0000));
-	printf("Val= %f  ",Val);
+	if(TESTING) printf("Val= %f  ",Val);
 	if(PreviousValue==0) return(Val);
 	if(PreviousValue!=0) Val=((1-(random()/(RAND_MAX/2.0000)))/(1+(2.0001-PreviousValue/10.00)));///((101.0000-PreviousValue)*100.000
 	return(PreviousValue+Val);
@@ -393,7 +427,6 @@ char *GetIP(){
 	return (Cropped);
 }
 
-
 void SetWiFi(int load){
 	bool AP=readConf(0);
 	bool WiFi=readConf(1);
@@ -403,18 +436,18 @@ void SetWiFi(int load){
 		oled.display();
 	}
 	if(AP){
-		if(!TESTING) if(load==10) system("service stop wpa_supplicant ");
-		if(!TESTING) if(load==55) system("service start hostapd ");
+		if(!TESTING) if(load==10 || load ==999) system("systemctl stop wpa_supplicant ");
+		if(!TESTING) if(load==55 || load ==999) system("systemctl start hostapd ");
 	}
 	else if (WiFi && !AP){
-		if(!TESTING) if(load==10) system("wpa_cli reconfigure ");
-		if(!TESTING) if(load==55) system("service stop hostapd");
-		if(!TESTING) if(load==65) system("service start wpa_supplicant ");
+		if(!TESTING) if(load==10 || load ==999) system("wpa_cli reconfigure ");
+		if(!TESTING) if(load==55 || load ==999) system("systemctl stop hostapd");
+		if(!TESTING) if(load==65 || load ==999) system("systemctl start wpa_supplicant ");
 	}
 	else {
 
-		if(!TESTING) if(load==10) system("service stop wpa_supplicant");
-		if(!TESTING) if(load==65) system("service stop hostapd ");
+		if(!TESTING) if(load==10 || load ==999) system("systemctl stop wpa_supplicant");
+		if(!TESTING) if(load==65 || load ==999) system("systemctl stop hostapd ");
 	}
 }
 
@@ -459,7 +492,10 @@ void WifiSett(){
 		drawBatt(false);
 		DrawPage(Page,CursorPos);
 		oled.display();
-		while ((BUTTON_UP.pinRead() == HIGH) && (BUTTON_DOWN.pinRead() == HIGH) && (BUTTON_SELECT.pinRead() == HIGH)) usleep(100000);
+		while ((BUTTON_UP.pinRead() == HIGH) && (BUTTON_DOWN.pinRead() == HIGH) && (BUTTON_SELECT.pinRead() == HIGH) && (BUTTON_LEFT.pinRead() == HIGH)) usleep(100000);
+		if (BUTTON_LEFT.pinRead() == LOW){
+			Menu();
+		}
 		if (BUTTON_UP.pinRead() == LOW){
 			if(CursorPos==0){
 				CursorPos=NELEMWIFI-1;
@@ -478,8 +514,6 @@ void WifiSett(){
 	}
 }
 
-//shutdown -P now
-
 void GenSett(){
 	int CursorPos=0;
 	int Page=3;
@@ -488,7 +522,10 @@ void GenSett(){
 		drawBatt(false);
 		DrawPage(Page,CursorPos);
 		oled.display();
-		while ((BUTTON_UP.pinRead() == HIGH) && (BUTTON_DOWN.pinRead() == HIGH) && (BUTTON_SELECT.pinRead() == HIGH)) usleep(100000);
+		while ((BUTTON_UP.pinRead() == HIGH) && (BUTTON_DOWN.pinRead() == HIGH) && (BUTTON_SELECT.pinRead() == HIGH) && (BUTTON_LEFT.pinRead() == HIGH)) usleep(100000);
+		if (BUTTON_LEFT.pinRead() == LOW){
+					Menu();
+				}
 		if (BUTTON_UP.pinRead() == LOW){
 			if(CursorPos==0){
 				CursorPos=NELEMGEN-1;
