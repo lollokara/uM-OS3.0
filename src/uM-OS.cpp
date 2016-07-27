@@ -409,8 +409,7 @@ float ReadADC(float PreviousValue){
 	if(PreviousValue==0) Val=(random()/(RAND_MAX/20.0000));
 	if(TESTING) printf("Val= %f  ",Val);
 	if(PreviousValue==0) return(Val);
-	if(PreviousValue!=0) Val=((1-(random()/(RAND_MAX/2.0000)))/(1+(2.0001-PreviousValue/10.00)));///((101.0000-PreviousValue)*100.000
-	return(PreviousValue+Val);
+	if(PreviousValue!=0) Val=((1-(random()/(RAND_MAX/2.0000)))/(1+(2.0001-PreviousValue/10.00)));
 }
 
 char *GetIP(){
